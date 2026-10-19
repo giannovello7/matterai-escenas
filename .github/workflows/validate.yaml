@@ -13,8 +13,8 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # brands: el ícono va por PR a home-assistant/brands; license: GitHub no detecta PolyForm
-          ignore: brands license
+          # license: HACS sólo acepta licencias abiertas (OSI) para la tienda; esta es no comercial
+          ignore: license
 
   hassfest:
     name: Hassfest
