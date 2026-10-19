@@ -13,7 +13,8 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands
+          # brands: el ícono va por PR a home-assistant/brands; license: GitHub no detecta PolyForm
+          ignore: brands license
 
   hassfest:
     name: Hassfest

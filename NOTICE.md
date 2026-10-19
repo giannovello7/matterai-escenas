@@ -1,5 +1,9 @@
 # Aviso de marca y uso
 
+Required Notice: Copyright (c) 2026 MatterAI (https://matterai.com.ar)
+
+Required Notice: La marca, el nombre y el logo de MatterAI que muestra la tarjeta no se pueden quitar ni reemplazar.
+
 **MatterAI Escenas** es un desarrollo de **MatterAI — Domótica & Automatismo** (https://matterai.com.ar).
 
 ## Uso gratis
