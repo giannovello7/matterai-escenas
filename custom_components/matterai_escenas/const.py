@@ -1,7 +1,7 @@
 """Constantes de MatterAI Escenas."""
 
 DOMAIN = "matterai_escenas"
-VERSION = "2.9.2"
+VERSION = "2.9.3"
 
 STORAGE_KEY = f"{DOMAIN}.rules"
 STORAGE_VERSION = 1

@@ -4,7 +4,7 @@
  * Se sirve automáticamente desde la integración matterai_escenas.
  */
 (() => {
-const VERSION = '2.9.2';
+const VERSION = '2.9.3';
 const D = 'matterai_escenas';
 
 // ----------------------------------------------------------------- utilidades
@@ -1112,6 +1112,7 @@ ha-card{padding:16px;overflow:hidden}
 .pill{display:inline-flex;align-items:center;gap:6px;background:var(--mae-accent);color:#fff;border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px}
 .pill ha-icon{--mdc-icon-size:18px}
 .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+@media (hover:hover) and (pointer:fine){.tabs{flex-wrap:wrap;overflow:visible}}
 .tab{padding:7px 14px;border-radius:999px;background:var(--mae-bg);font-size:14px;white-space:nowrap;color:var(--mae-sub);font-weight:500}
 .tab.on{background:var(--mae-soft);color:var(--mae-accent);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}

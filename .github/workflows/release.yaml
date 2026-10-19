@@ -1,0 +1,21 @@
+name: Publicar versión
+
+# Al subir un tag v* (por ejemplo v2.9.3) se crea la release sola, y HACS la ofrece como actualización.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # las notas salen del mensaje del tag (git tag -a v2.9.3 -m "…")
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-from-tag --verify-tag
