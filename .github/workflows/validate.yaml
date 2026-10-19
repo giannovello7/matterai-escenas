@@ -13,8 +13,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # license: HACS sólo acepta licencias abiertas (OSI) para la tienda; esta es no comercial
-          ignore: license
 
   hassfest:
     name: Hassfest

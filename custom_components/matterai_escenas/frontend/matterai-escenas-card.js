@@ -4,7 +4,7 @@
  * Se sirve automáticamente desde la integración matterai_escenas.
  */
 (() => {
-const VERSION = '2.9.1';
+const VERSION = '2.9.2';
 const D = 'matterai_escenas';
 
 // ----------------------------------------------------------------- utilidades
@@ -991,7 +991,7 @@ function invWindow(x) {
     default: return [x.from ? new Date(x.from) : now, x.until ? new Date(x.until) : null];
   }
 }
-// Marca: la licencia pide mantenerla visible (ver LICENSE / NOTICE)
+// Marca MatterAI (ver NOTICE.md)
 const LOGO = '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><mask id="maeiso"><polygon points="50.0,4.0 89.8,27.0 89.8,73.0 50.0,96.0 10.2,73.0 10.2,27.0" fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round"/><circle cx="50" cy="50" r="39" fill="#000"/><g stroke="#000" stroke-width="7"><line x1="50" y1="50" x2="80.0" y2="-2.0"/><line x1="50" y1="50" x2="110.0" y2="50.0"/><line x1="50" y1="50" x2="80.0" y2="102.0"/><line x1="50" y1="50" x2="20.0" y2="102.0"/><line x1="50" y1="50" x2="-10.0" y2="50.0"/><line x1="50" y1="50" x2="20.0" y2="-2.0"/></g></mask></defs><rect width="100" height="100" fill="currentColor" mask="url(#maeiso)"/></svg>';
 const BRAND = `<a class="brand" href="https://matterai.com.ar" target="_blank" rel="noopener" title="MatterAI · Domótica & Automatismo">${LOGO}<span>Hecho por <b>MatterAI</b></span></a>`;
 const mkey = (eid) => String(eid).replace(/\./g, '__'); // claves con punto rompen las rutas del editor

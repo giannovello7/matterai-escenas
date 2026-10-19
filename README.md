@@ -4,7 +4,7 @@
 
 [![HACS](https://img.shields.io/badge/HACS-repositorio%20personalizado-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![Validar](https://github.com/giannovello7/matterai-escenas/actions/workflows/validate.yaml/badge.svg)](https://github.com/giannovello7/matterai-escenas/actions/workflows/validate.yaml)
-![Licencia](https://img.shields.io/badge/licencia-PolyForm%20Noncommercial-blue)
+![Licencia](https://img.shields.io/badge/licencia-MIT-blue)
 
 Escenas y automatizaciones fáciles para **usuarios no administradores** de Home Assistant, con una experiencia tipo Tuya / eWeLink pero con todo el motor de HA por detrás.
 
@@ -129,7 +129,6 @@ Requiere Home Assistant 2024.11 o posterior.
 
 ## Licencia
 
-Gratis para uso personal en tu casa y para organizaciones sin fines de lucro: [PolyForm Noncommercial 1.0.0](LICENSE).
-**Instaladores e integradores:** usarla en clientes como parte de un servicio pago necesita una licencia de MatterAI. Ver [NOTICE.md](NOTICE.md).
+Libre y gratis, bajo la [licencia MIT](LICENSE). El nombre y el logo de MatterAI son marcas: ver [NOTICE.md](NOTICE.md).
 
 Hecho por **[MatterAI — Domótica & Automatismo](https://matterai.com.ar)**.

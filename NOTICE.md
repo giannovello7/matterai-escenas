@@ -1,19 +1,10 @@
-# Aviso de marca y uso
+# Marca MatterAI
 
-Required Notice: Copyright (c) 2026 MatterAI (https://matterai.com.ar)
+**MatterAI Escenas** es un desarrollo de **MatterAI — Domótica & Automatismo** (https://matterai.com.ar), libre y gratuito bajo la [licencia MIT](LICENSE).
 
-Required Notice: La marca, el nombre y el logo de MatterAI que muestra la tarjeta no se pueden quitar ni reemplazar.
+El nombre **MatterAI**, su logo y la leyenda «Hecho por MatterAI» son marcas de MatterAI. La licencia MIT cubre el código, no la marca:
 
-**MatterAI Escenas** es un desarrollo de **MatterAI — Domótica & Automatismo** (https://matterai.com.ar).
+- Si publicás una versión modificada, no la presentes como hecha o aprobada por MatterAI ni uses el nombre o el logo para identificarla.
+- Te pedimos que mantengas la leyenda «Hecho por MatterAI» en la tarjeta: es lo que permite que el proyecto siga siendo gratis.
 
-## Uso gratis
-
-Podés instalarla y usarla gratis en **tu casa**, para uso personal, y también en organizaciones sin fines de lucro, según la licencia [PolyForm Noncommercial 1.0.0](LICENSE).
-
-## Uso comercial (instaladores e integradores)
-
-Instalarla en casas o empresas de clientes como parte de un servicio pago (instalación, mantenimiento, soporte o venta de equipos) es **uso comercial** y necesita una licencia de MatterAI. Escribinos a través de https://matterai.com.ar.
-
-## Marca
-
-El nombre, el logo y la leyenda «Hecho por MatterAI» que muestra la tarjeta son marcas de MatterAI. **No se pueden quitar, ocultar ni reemplazar**, tampoco en versiones modificadas. Una versión modificada no puede presentarse como hecha o aprobada por MatterAI.
+¿Te sirvió? Podés apoyar el desarrollo desde el botón de donación del repositorio, o contratarnos para instalaciones de domótica.
