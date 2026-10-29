@@ -1,7 +1,7 @@
 """Constantes de MatterAI Escenas."""
 
 DOMAIN = "matterai_escenas"
-VERSION = "2.9.4"
+VERSION = "2.10.0"
 
 STORAGE_KEY = f"{DOMAIN}.rules"
 STORAGE_VERSION = 1
@@ -41,6 +41,7 @@ KIND_FDETECT = "fdetect"  # detección con cámaras (Frigate)
 KIND_FFACE = "fface"  # caras y patentes conocidas (Frigate)
 KIND_TV = "tv"  # tele inteligente (modo cine, sin nadie, hora de dormir…)
 KIND_GUEST = "guest"  # invitados: links temporales para abrir el portón / la puerta
+KIND_GATE = "gate"  # portón inteligente (lo arma el instalador)
 
 KINDS = {
     KIND_SCENE,
@@ -64,12 +65,15 @@ KINDS = {
     KIND_FFACE,
     KIND_TV,
     KIND_GUEST,
+    KIND_GATE,
 }
 # reglas que maneja una máquina de estados en Python (no compilan YAML)
 CONTROLLER_KINDS = {
     KIND_ROOM, KIND_WATCH, KIND_AWAY, KIND_NIGHT, KIND_CLIMA, KIND_WAKE, KIND_REMINDER, KIND_CALALERT, KIND_DOORBELL,
-    KIND_FDETECT, KIND_FFACE, KIND_TV, KIND_GUEST,
+    KIND_FDETECT, KIND_FFACE, KIND_TV, KIND_GUEST, KIND_GATE,
 }
+# sólo el instalador (admin) las crea y las cambia: arman «equipos» que usan las demás
+INSTALLER_KINDS = {KIND_GATE}
 # se pueden ejecutar a mano (botón / tarjeta / voz)
 RUNNABLE_CONTROLLERS = {KIND_NIGHT, KIND_WAKE, KIND_REMINDER, KIND_DOORBELL}
 TRIGGERED_KINDS = {KIND_AUTO, KIND_PERIOD, KIND_IRRIGATION, KIND_CIRCADIAN}

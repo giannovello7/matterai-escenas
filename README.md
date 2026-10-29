@@ -114,6 +114,32 @@ Además, se puede elegir qué hacer si se vuelve a disparar mientras está en cu
 
 **Ideas listas:** luz con movimiento de noche, bienvenida a casa, apagar todo al salir, aviso de puerta abierta, alerta de agua o humo, persianas al atardecer, buenos días, aire si hace calor, apagado automático y modo cine.
 
+## Instalador y cliente
+
+La misma integración tiene dos «caras», según el usuario de Home Assistant:
+
+- **Administrador (instalador):** ve todo, crea los **equipos del instalador** y entra a **⚙ Ajustes del instalador**. Si usás la integración MatterAI, todo esto está en su panel, en la pestaña **Automatizaciones**.
+- **Cliente (usuario no administrador):** arma escenas, automatizaciones, temporizadores, recordatorios, rutinas e invitados. También usa y ajusta las automatizaciones inteligentes que armó el instalador.
+
+Lo controla el servidor, no sólo la pantalla:
+
+- **Equipos del instalador** (portón inteligente, sensor de ocupación de un ambiente): el cliente no los ve ni los puede cambiar, pausar o borrar. Sí usa lo que crean (el portón, el sensor).
+- **🔒 Bloquear para el cliente:** cualquier automatización del instalador puede quedar con candado. El cliente la activa o la pausa, pero no la cambia ni la borra.
+- **Qué puede crear el cliente:** en ⚙ el instalador elige, por casa, qué tipos de automatización puede crear el cliente.
+
+### 🚪 Portón inteligente (instalador)
+
+Crea un `cover` con estado real (**abierto, abriendo, cerrando, cerrado**) aunque el portón tenga un solo sensor de cerrado y un solo pulso para abrir y cerrar.
+
+- Aprende solo cuánto tarda: mide desde que se manda cerrar hasta que el sensor marca cerrado. También se puede fijar a mano.
+- Seguros:
+  - no manda el pulso de cerrar mientras abre (lo frenaría);
+  - abrir mientras cierra lo revierte;
+  - detecta la apertura con el control remoto;
+  - avisa cuando el cierre no terminó (se trabó o volvió por la fotocélula).
+- Sirve con un relé de pulso (Shelly, Sonoff, botón, script) o con relés separados de abrir y cerrar. El sensor de abierto es opcional.
+- Opcional: aviso si queda abierto más de X minutos (con botón «Cerrar») y cierre automático de noche.
+
 ## Servicios
 
 - `matterai_escenas.run`: `rule_id` o `entity_id` (button o switch de la regla)

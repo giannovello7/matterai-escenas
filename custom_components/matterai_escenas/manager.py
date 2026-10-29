@@ -36,6 +36,7 @@ from .away import AwayController
 from .clima import ClimaController
 from .doorbell import DoorbellController
 from .frigate import FDetectController, FFaceController, FrigateHub
+from .gate import GateController
 from .guest import DOMAINS as GUEST_DOMAINS, GUEST_PATH as GUEST_LINK, MAX_INVITES, GuestController, base_url, clean_invite
 from .night import NightController
 from .reminder import CalAlertController, ReminderController
@@ -62,6 +63,8 @@ from .const import (
     KIND_FFACE,
     KIND_TV,
     KIND_GUEST,
+    KIND_GATE,
+    INSTALLER_KINDS,
     RUNNABLE_CONTROLLERS,
     KIND_PERIOD,
     KIND_ROOM,
@@ -96,6 +99,7 @@ CONTROLLERS = {
     KIND_FFACE: FFaceController,
     KIND_TV: TvController,
     KIND_GUEST: GuestController,
+    KIND_GATE: GateController,
 }
 
 # Si HA estuvo apagado cuando vencía un temporizador, se ejecuta igual
@@ -105,6 +109,15 @@ TIMER_GRACE = timedelta(minutes=10)
 
 class InvalidRule(HomeAssistantError):
     """La regla no se puede guardar (mensaje pensado para el usuario final)."""
+
+
+def installer_only(rule: dict[str, Any]) -> bool:
+    """Reglas que arman «equipos» (portón, sensor de ocupación): sólo el instalador las toca."""
+    return rule.get("kind") in INSTALLER_KINDS or (rule.get("kind") == KIND_ROOM and bool((rule.get("ui") or {}).get("only_sensor")))
+
+
+def _is_admin(user) -> bool:
+    return user is None or bool(getattr(user, "is_admin", False))
 
 
 def build_sequence(rule: dict[str, Any]) -> list[dict[str, Any]]:
@@ -408,7 +421,7 @@ class RuleManager:
         self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.rules: dict[str, dict[str, Any]] = {}
         # ajustes que define el instalador (admin) desde la tarjeta
-        self.settings: dict[str, Any] = {"hidden": []}
+        self.settings: dict[str, Any] = {"hidden": [], "client_off": []}
         self.runners: dict[str, RuleRunner] = {}
         self.started = False
 
@@ -434,7 +447,7 @@ class RuleManager:
         out = []
         for rule in self.rules.values():
             runner = self.runners.get(rule["id"])
-            item = {**rule, "running": bool(runner and runner.is_running)}
+            item = {**rule, "running": bool(runner and runner.is_running), "installer_only": installer_only(rule)}
             if runner and runner.room:
                 item.update(runner.room.as_dict())
             out.append(item)
@@ -481,6 +494,10 @@ class RuleManager:
         hidden = settings.get("hidden")
         if isinstance(hidden, list):
             self.settings["hidden"] = sorted({str(e) for e in hidden})
+        off = settings.get("client_off")
+        if isinstance(off, list):
+            # tipos que este cliente no puede crear (los decide el instalador)
+            self.settings["client_off"] = sorted({str(k) for k in off if k in KINDS})
         self._save()
         self._changed()
 
@@ -606,6 +623,29 @@ class RuleManager:
             same = bool(old and old.get("kind") == kind)
             rule["invites"] = old.get("invites", []) if same else []
             rule["history"] = old.get("history", []) if same else []
+        elif kind == KIND_GATE:
+            ui = rule["ui"]
+            relays = {"switch", "button", "input_button", "script", "light", "input_boolean", "lock"}
+            if ui.get("relays") == "two":
+                if not ui.get("open_relay") or not ui.get("close_relay"):
+                    raise InvalidRule("Elegí el relé de abrir y el de cerrar")
+                keys = ("open_relay", "close_relay")
+            else:
+                if not ui.get("relay"):
+                    raise InvalidRule("Elegí el relé o botón que da el pulso")
+                keys = ("relay",)
+            for key in keys:
+                if str(ui[key]).split(".")[0] not in relays:
+                    raise InvalidRule("El relé tiene que ser un interruptor, botón o script")
+            if not ui.get("closed_sensor") and not ui.get("open_sensor"):
+                raise InvalidRule("Elegí el sensor de cerrado (o el de abierto)")
+            for key in ("closed_sensor", "open_sensor"):
+                if ui.get(key) and str(ui[key]).split(".")[0] != "binary_sensor":
+                    raise InvalidRule("Los sensores del portón tienen que ser de tipo abierto / cerrado")
+            _str_list(ui, "recipients")
+            old = self.rules.get(rule["id"])
+            if old and old.get("kind") == kind and old.get("learned_s"):
+                rule["learned_s"] = old["learned_s"]
         elif kind == KIND_CALALERT:
             _validate_lists(rule["ui"], {"calendars": {"calendar"}})
             if not rule["ui"].get("calendars"):
@@ -651,9 +691,19 @@ class RuleManager:
         return rule
 
     async def async_save(self, raw: dict[str, Any], user) -> dict[str, Any]:
-        is_admin = bool(user is None or user.is_admin)
+        is_admin = _is_admin(user)
+        if not is_admin:
+            # permisos antes que nada: el cliente no toca lo que armó el instalador
+            prev = self.rules.get(str(raw.get("id") or ""))
+            if prev and (prev.get("locked") or installer_only(prev)):
+                raise InvalidRule("La armó tu instalador: la podés activar o pausar, pero no cambiarla")
+            if installer_only(raw):
+                raise InvalidRule("Esto lo configura tu instalador")
+            if not prev and raw.get("kind") in self.settings.get("client_off", []):
+                raise InvalidRule("Tu instalador no habilitó este tipo de automatización")
         rule = await self.async_validate(raw, is_admin)
         old = self.rules.get(rule["id"])
+        rule["locked"] = bool(raw.get("locked")) if is_admin else False
         now = dt_util.utcnow().isoformat()
         if old:
             rule["created"] = old.get("created", now)
@@ -671,9 +721,12 @@ class RuleManager:
         self._changed()
         return rule
 
-    async def async_delete(self, rule_id: str) -> None:
+    async def async_delete(self, rule_id: str, user=None) -> None:
         if rule_id not in self.rules:
             return
+        old = self.rules[rule_id]
+        if not _is_admin(user) and (old.get("locked") or installer_only(old)):
+            raise InvalidRule("La armó tu instalador: no se puede borrar")
         runner = self.runners.pop(rule_id, None)
         if runner:
             await runner.async_stop(run_stop_actions=True)
@@ -681,8 +734,10 @@ class RuleManager:
         self._save()
         self._changed()
 
-    async def async_set_enabled(self, rule_id: str, enabled: bool) -> None:
+    async def async_set_enabled(self, rule_id: str, enabled: bool, user=None) -> None:
         rule = self._get(rule_id)
+        if not _is_admin(user) and installer_only(rule):
+            raise InvalidRule("Esto lo configura tu instalador")
         if rule.get("enabled", True) == enabled:
             return
         rule["enabled"] = enabled

@@ -4,7 +4,7 @@
  * Se sirve automáticamente desde la integración matterai_escenas.
  */
 (() => {
-const VERSION = '2.9.4';
+const VERSION = '2.10.0';
 const D = 'matterai_escenas';
 
 // ----------------------------------------------------------------- utilidades
@@ -323,6 +323,10 @@ function ruleSummary(h, r, rules) {
     case 'tv': return [u.cine ? 'modo cine' : '', (u.companions || []).length ? 'barra de sonido' : '', (u.presence || []).length || (u.empty_motion || []).length ? 'se apaga sin nadie' : '', u.bedtime ? `hora de dormir ${u.bed_at}` : '', u.night_vol ? `volumen máx. ${u.vol_max}%` : '', (u.pause_on || []).length ? 'pausa con el timbre' : ''].filter(Boolean).join(' · ');
     case 'fdetect': return `${(u.labels || []).map((l) => FLABELS[l] || l).join(', ')} en ${(u.zones || []).length ? u.zones.join(', ') : (u.cameras || []).length ? u.cameras.join(', ') : 'todas las cámaras'}${u.when === 'night' ? ' · de noche' : u.when === 'hours' ? ` · ${u.from}-${u.to}` : ''}${u.only_away ? ' · sin nadie en casa' : ''}`;
     case 'fface': return `${u.any_known ? 'Cualquier conocido' : [...(u.people || []), ...(u.plates || []).map((p) => p.split('=')[0].trim())].join(', ')}${u.unlock ? (u.unlock_mode === 'auto' ? ' · abre solo' : ' · abrir con un botón') : ''}`;
+    case 'gate': {
+      const now = r.gate_moving === 'opening' ? 'abriendo' : r.gate_moving === 'closing' ? 'cerrando' : r.gate_closed === true ? 'cerrado' : r.gate_closed === false ? 'abierto' : '';
+      return [now, r.gate_travel ? `tarda ${r.gate_travel} s${r.gate_learned && !+u.travel_s ? ' (aprendido)' : ''}` : '', +u.open_alert_min ? `avisa a los ${u.open_alert_min} min` : '', u.night_close ? `cierra solo a las ${u.night_at}` : ''].filter(Boolean).join(' · ');
+    }
     case 'guest': {
       const act = (r.invites || []).filter((i) => invState(i)[0] === 'ok' || invState(i)[0] === 'early').length;
       return `${(u.devices || []).map((e) => u.cfg?.[mkey(e)]?.label || fname(h, e)).join(', ')} · ${act ? `${act} invitaci${act === 1 ? 'ón activa' : 'ones activas'}` : 'sin invitaciones activas'}`;
@@ -456,7 +460,7 @@ function compileAction(h, a) {
 
 function compileRule(h, d) {
   const u = d.ui;
-  const out = { id: d.id, name: (d.name || '').trim(), icon: d.icon, color: d.color, kind: d.kind, enabled: d.enabled !== false, mode: d.mode || 'restart', ui: u, triggers: [], conditions: [], actions: [], on_stop: [] };
+  const out = { id: d.id, name: (d.name || '').trim(), icon: d.icon, color: d.color, kind: d.kind, enabled: d.enabled !== false, locked: !!d.locked, mode: d.mode || 'restart', ui: u, triggers: [], conditions: [], actions: [], on_stop: [] };
   const turn = (svc, ents) => ({ service: `homeassistant.${svc}`, target: { entity_id: ents } });
   switch (d.kind) {
     case 'scene': out.actions = u.actions.flatMap((a) => compileAction(h, a)); break;
@@ -854,6 +858,10 @@ function draftError(d) {
       if (!u.any_known && !u.people.length && !u.plates.length) return 'Elegí las personas o patentes (o «cualquier persona conocida»)';
       if (u.disarm && !u.alarm) return 'Elegí la alarma';
       return '';
+    case 'gate':
+      if (u.relays === 'two' ? !(u.open_relay && u.close_relay) : !u.relay) return u.relays === 'two' ? 'Elegí el relé de abrir y el de cerrar' : 'Elegí el relé que da el pulso';
+      if (!u.closed_sensor && !u.open_sensor) return 'Elegí el sensor de cerrado';
+      return '';
     case 'guest':
       if (!u.devices.length) return 'Elegí qué pueden abrir tus invitados';
       if (u.base_url && !/^https?:\/\/\S+/.test(u.base_url)) return 'La dirección de tu casa tiene que empezar con https://';
@@ -935,7 +943,14 @@ const KIND_META = {
   fface: { icon: 'mdi:face-recognition', title: 'Caras y patentes conocidas' },
   tv: { icon: 'mdi:television-classic', title: 'Tele inteligente' },
   guest: { icon: 'mdi:account-key', title: 'Invitados' },
+  gate: { icon: 'mdi:gate', title: 'Portón inteligente' },
 };
+// «equipos» que arma sólo el instalador: el cliente no los ve ni los toca
+const installerOnly = (r) => !!r && (r.installer_only || r.kind === 'gate' || (r.kind === 'room' && !!r.ui?.only_sensor));
+const CLIENT_KINDS = [['scene', 'Escenas'], ['auto', 'Automáticas («Si… entonces…»)'], ['timer', 'Temporizadores'], ['reminder', 'Recordatorios'], ['calalert', 'Avisos del calendario'],
+  ['period', 'Encender en un horario'], ['loop', 'Ciclos'], ['presence', 'Simular presencia'], ['wake', 'Despertador con luz'], ['night', 'Buenas noches'], ['away', 'Me voy / Llego'],
+  ['room', 'Luz por presencia'], ['circadian', 'Luz circadiana y brillo'], ['clima', 'Clima inteligente'], ['tv', 'Tele inteligente'], ['watch', 'Avisar si algo quedó abierto'],
+  ['guest', 'Invitados'], ['doorbell', 'Portero'], ['fdetect', 'Detección con cámaras'], ['fface', 'Caras y patentes'], ['irrigation', 'Riego']];
 const TV_APPS = ['Netflix', 'Prime Video', 'Disney+', 'Max', 'YouTube', 'Paramount+', 'Apple TV', 'Plex', 'Kodi', 'Flow', 'Star+', 'Crunchyroll'];
 const FLABELS = { person: 'Persona', car: 'Auto', motorcycle: 'Moto', bicycle: 'Bicicleta', truck: 'Camión', dog: 'Perro', cat: 'Gato', bird: 'Pájaro', package: 'Paquete' };
 const REM_KINDS = ['reminder', 'calalert'];
@@ -961,7 +976,7 @@ function remRepeat(u) {
     default: return '';
   }
 }
-const SMART_KINDS = ['period', 'loop', 'presence', 'irrigation', 'circadian', 'room', 'watch', 'away', 'night', 'clima', 'wake', 'doorbell', 'fdetect', 'fface', 'tv', 'guest'];
+const SMART_KINDS = ['period', 'loop', 'presence', 'irrigation', 'circadian', 'room', 'watch', 'away', 'night', 'clima', 'wake', 'doorbell', 'fdetect', 'fface', 'tv', 'guest', 'gate'];
 const GUEST_PATH = '/api/matterai_escenas/invitado/';
 function invState(i) {
   const now = Date.now();
@@ -1046,6 +1061,8 @@ function newDraft(kind, extra = {}) {
       recipients: [], ring_style: 'call', ring_repeat: true, ring_secs: 40, speakers: [], tts: null, message: 'Están tocando el timbre',
       light: null, light_min: 3, light_dark: true, quiet: false, quiet_from: '23:00', quiet_to: '07:00', snapshots: true, stream: '',
     },
+    gate: { relays: 'one', relay: null, open_relay: null, close_relay: null, pulse_s: 0, closed_sensor: null, closed_when: 'off', open_sensor: null, open_when: 'on',
+      travel_s: 0, gate_type: 'gate', open_alert_min: 0, night_close: false, night_at: '23:00', recipients: [] },
     guest: { devices: [], cfg: {}, recipients: [], notify_use: true, notify_denied: true, title: '', welcome: '', base_url: '', code: '' },
     reminder: { text: '', date: '', time: '', repeat: 'none', days: [], recipients: [], critical: false, nag_min: 0 },
     calalert: { calendars: [], before_min: 15, all_day: true, all_day_time: '08:00', recipients: [], critical: false },
@@ -1406,7 +1423,7 @@ class MatterAIEscenasCard extends HTMLElement {
 
   // ---------------------------------------------------------- vista tarjeta
   _counts() {
-    const rules = this._rules || [];
+    const rules = (this._rules || []).filter((r) => this._isAdmin || !installerOnly(r));
     return {
       scenes: rules.filter((r) => r.kind === 'scene'),
       cines: rules.filter((r) => r.kind === 'tv' && r.enabled && r.ui?.cine && ['manual', 'both'].includes(r.ui?.cine_mode || 'auto')),
@@ -1466,7 +1483,7 @@ class MatterAIEscenasCard extends HTMLElement {
         <div class="row ${r.enabled ? '' : 'off'}">
           <button class="ic" style="background:${esc(r.color)}" data-a="edit" data-id="${r.id}"><ha-icon icon="${esc(r.icon)}"></ha-icon></button>
           <button class="tx" style="text-align:left" data-a="edit" data-id="${r.id}">
-            <div class="t1">${esc(r.name)}${busy ? `<span class="badge">${r.kind === 'irrigation' ? 'regando' : 'en curso'}</span>` : ''}${r.kind === 'room' && r.enabled ? `<span class="badge" ${r.occupied ? '' : 'style="background:var(--mae-bg);color:var(--mae-sub)"'}>${r.occupied ? (r.sealed ? 'ocupado 🔒' : 'ocupado') : 'libre'}</span>` : ''}${r.kind === 'watch' && r.enabled && (r.alerting || []).length ? `<span class="badge" style="background:rgba(247,111,111,.15);color:#e04848">⚠ ${r.alerting.length}</span>` : ''}${r.kind === 'away' && r.enabled ? `<span class="badge" ${r.away ? '' : 'style="background:var(--mae-bg);color:var(--mae-sub)"'}>${r.away ? 'ausentes' : 'en casa'}</span>` : ''}${badge2}</div>
+            <div class="t1">${esc(r.name)}${r.locked ? '<span class="badge" style="background:var(--mae-bg);color:var(--mae-sub)" title="La armó tu instalador">🔒</span>' : ''}${this._isAdmin && installerOnly(r) ? '<span class="badge" style="background:var(--mae-bg);color:var(--mae-sub)">instalador</span>' : ''}${busy ? `<span class="badge">${r.kind === 'irrigation' ? 'regando' : 'en curso'}</span>` : ''}${r.kind === 'room' && r.enabled ? `<span class="badge" ${r.occupied ? '' : 'style="background:var(--mae-bg);color:var(--mae-sub)"'}>${r.occupied ? (r.sealed ? 'ocupado 🔒' : 'ocupado') : 'libre'}</span>` : ''}${r.kind === 'watch' && r.enabled && (r.alerting || []).length ? `<span class="badge" style="background:rgba(247,111,111,.15);color:#e04848">⚠ ${r.alerting.length}</span>` : ''}${r.kind === 'away' && r.enabled ? `<span class="badge" ${r.away ? '' : 'style="background:var(--mae-bg);color:var(--mae-sub)"'}>${r.away ? 'ausentes' : 'en casa'}</span>` : ''}${badge2}</div>
             <div class="t2">${esc(ruleSummary(h, r, rules))}</div>
           </button>
           ${play}
@@ -1764,9 +1781,12 @@ class MatterAIEscenasCard extends HTMLElement {
     }).join('')}</div>`;
   }
   _pageSettings() {
-    return `<div class="ov"><div class="bar"><button class="ib" data-a="back"><ha-icon icon="mdi:arrow-left"></ha-icon></button><h1>Equipos visibles</h1><button class="save" data-a="ssave">Guardar</button></div>
+    return `<div class="ov"><div class="bar"><button class="ib" data-a="back"><ha-icon icon="mdi:arrow-left"></ha-icon></button><h1>Ajustes del instalador</h1><button class="save" data-a="ssave">Guardar</button></div>
       <div class="body"><div class="wrap">
-        <div class="note" style="margin-top:0">Elegí qué equipos puede usar el cliente al armar escenas y automatizaciones. Los desmarcados no aparecen en las listas (lo que ya está creado sigue funcionando). Sólo vos, como administrador, ves esta pantalla.</div>
+        <div class="sec" style="margin-top:0"><div><div class="h">Qué puede crear el cliente</div><div class="s">Lo que ya está armado sigue funcionando y el cliente lo puede activar o pausar</div></div></div>
+        <div class="chips">${CLIENT_KINDS.map(([k, l]) => { const on = !(this._ov.clientOff || []).includes(k); return `<button class="chip ${on ? 'on' : ''}" data-a="coff" data-v="${k}">${on ? '✓ ' : ''}${esc(l)}</button>`; }).join('')}</div>
+        <div class="sec"><div><div class="h">Equipos visibles</div></div></div>
+        <div class="note" style="margin-top:6px">Elegí qué equipos puede usar el cliente al armar escenas y automatizaciones. Los desmarcados no aparecen en las listas (lo que ya está creado sigue funcionando). Sólo vos, como administrador, ves esta pantalla.</div>
         <div class="search" style="margin-top:12px"><input type="text" placeholder="Buscar por nombre, ambiente o tipo…" value="${esc(this._ov.ssearch || '')}" data-a="ssearch"></div>
         ${this._settingsListHtml()}
       </div></div></div>`;
@@ -1775,17 +1795,36 @@ class MatterAIEscenasCard extends HTMLElement {
   // ---------- página "Crear"
   _pageCreate() {
     const h = this._hass;
-    const it = (a, attrs, icon, color, t1, t2) => `<button class="item" data-a="${a}" ${attrs}><div class="ic" style="background:${color}"><ha-icon icon="${icon}"></ha-icon></div><div class="tx"><div class="t1">${esc(t1)}</div>${t2 ? `<div class="t2">${esc(t2)}</div>` : ''}</div><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon></button>`;
+    let it = (a, attrs, icon, color, t1, t2) => `<button class="item" data-a="${a}" ${attrs}><div class="ic" style="background:${color}"><ha-icon icon="${icon}"></ha-icon></div><div class="tx"><div class="t1">${esc(t1)}</div>${t2 ? `<div class="t2">${esc(t2)}</div>` : ''}</div><ha-icon class="chev" icon="mdi:chevron-right"></ha-icon></button>`;
     const trig = TRIGGER_TYPES.filter((t) => !t.need || t.need(h));
     const ideas = IDEAS.filter((i) => !i.need || i.need(h));
     const tab = this._ctab || 'smart';
     const riego = IDEAS.findIndex((i) => i.make && i.name.startsWith('Riego'));
-    const body = tab === 'smart' ? `
+    // qué tipos puede crear este usuario (el instalador los elige por casa)
+    const off = new Set(this._settings?.client_off || []);
+    const kindOf = (a, attrs) => {
+      const v = (attrs.match(/data-v="([^"]*)"/) || [])[1];
+      if (a === 'newkind') return v;
+      if (a === 'idea') { try { return IDEAS[+v].make().kind; } catch (_) { return 'auto'; } }
+      return { newscene: 'scene', newauto: 'auto', newrem: 'reminder', calalert: 'calalert', newnight: 'period', newdim: 'circadian', newocc: 'occ' }[a] || '';
+    };
+    const itAll = it;
+    const itOk = (a, attrs, ...rest) => {
+      const k = kindOf(a, attrs);
+      if (k === 'occ' || k === 'gate') return this._isAdmin ? itAll(a, attrs, ...rest) : '';
+      return this._isAdmin || !off.has(k) ? itAll(a, attrs, ...rest) : '';
+    };
+    it = itOk;
+    let body = tab === 'smart' ? `
       <div class="hint" style="margin:2px 4px 0">Automatizaciones completas, listas para usar: elegís tus equipos y ajustás lo que quieras.</div>
+      ${this._isAdmin ? `<div class="sec"><div><div class="h">🛠 Equipos del instalador</div><div class="s">Se configuran una vez al instalar. El cliente no los ve: usa lo que crean (el portón, el sensor)</div></div></div>
+      <div class="card">
+        ${it('newkind', 'data-v="gate"', 'mdi:gate', '#4F8EF7', 'Portón inteligente', 'Abriendo / Cerrando con un solo sensor, aprende cuánto tarda, seguros del pulso y avisos')}
+        ${it('newocc', '', 'mdi:account-check-outline', '#7A8699', 'Sensor de ocupación de un ambiente', 'Movimiento + puerta (+ mmWave): sabe si hay alguien aunque no se mueva. Para usar en otras automatizaciones')}
+      </div>` : ''}
       <div class="sec"><div><div class="h">💡 Luces</div></div></div>
       <div class="card">
         ${it('newkind', 'data-v="room"', 'mdi:motion-sensor', '#3DBE8B', 'Luz por presencia', 'Baños y ambientes: movimiento, puerta y presencia. No se apaga si hay alguien adentro')}
-        ${it('newocc', '', 'mdi:account-check-outline', '#7A8699', 'Sensor de ocupación de un ambiente', 'Movimiento + puerta (+ mmWave): sabe si hay alguien aunque no se mueva. Para usar en otras automatizaciones')}
         ${it('newnight', '', 'mdi:weather-night', '#5B6CD9', 'Luces de noche', 'Se prenden al atardecer y se apagan al amanecer, solas todo el año')}
         ${it('newkind', 'data-v="circadian"', 'mdi:sun-clock-outline', '#F7B84F', 'Luz circadiana', 'El blanco de las luces sigue el ritmo del día: fresco de día, cálido de noche')}
         ${it('newdim', '', 'mdi:brightness-6', '#7A8699', 'Brillo según la hora (dimmers)', 'La intensidad sube de mañana y baja de a poco a la noche')}
@@ -1831,6 +1870,9 @@ class MatterAIEscenasCard extends HTMLElement {
       <div class="card" style="margin-top:10px">${trig.map((t) => it('newauto', `data-v="${t.id}"`, t.icon, t.color, t.label, `Ej: ${t.hint || ''}`)).join('')}</div>
       <div class="sec"><div><div class="h">Ideas para empezar</div><div class="s">Elegí una y completá tus dispositivos</div></div></div>
       <div class="card">${ideas.map((i) => it('idea', `data-v="${IDEAS.indexOf(i)}"`, i.icon, i.color, i.name, i.hint)).join('')}</div>`;
+    // secciones que quedaron vacías (tipos que el instalador no habilitó)
+    body = body.replace(/<div class="sec"[^>]*><div><div class="h">[^<]*<\/div>(?:<div class="s">[^<]*<\/div>)?<\/div><\/div>\s*<div class="card"[^>]*>\s*<\/div>/g, '');
+    if (!/class="item"/.test(body)) body = '<div class="empty"><ha-icon icon="mdi:lock-outline"></ha-icon><div>Tu instalador todavía no habilitó automatizaciones para crear.</div></div>';
     return `<div class="ov"><div class="bar"><button class="ib" data-a="close"><ha-icon icon="mdi:close"></ha-icon></button><h1>Crear</h1><span style="width:40px"></span></div>
     <div class="body"><div class="wrap">
       <div class="seg" style="margin-bottom:6px"><button class="${tab === 'smart' ? 'on' : ''}" data-a="ctab" data-v="smart">✨ Inteligentes</button><button class="${tab === 'mine' ? 'on' : ''}" data-a="ctab" data-v="mine">🛠 Armar la mía</button></div>
@@ -1856,6 +1898,9 @@ class MatterAIEscenasCard extends HTMLElement {
     const enabledRow = !['scene', 'timer', 'reminder'].includes(d.kind) ? `
       <div class="field" style="display:flex;align-items:center;gap:12px;margin-top:16px"><div style="flex:1"><div class="t1" style="font-weight:600">Activa</div><div class="hint" style="margin:2px 0 0">Si la pausás, queda guardada pero no se ejecuta</div></div>
       <button class="sw ${d.enabled !== false ? 'on' : ''}" data-a="denabled"></button></div>` : '';
+    const lockRow = this._isAdmin && !installerOnly(d) ? `
+      <div class="field" style="display:flex;align-items:center;gap:12px;margin-top:10px"><div style="flex:1"><div class="t1" style="font-weight:600">🔒 Bloquear para el cliente</div><div class="hint" style="margin:2px 0 0">La puede activar o pausar, pero no cambiarla ni borrarla</div></div>
+      <button class="sw ${d.locked ? 'on' : ''}" data-a="dlock"></button></div>` : '';
     return `<div class="ov"><div class="bar"><button class="ib" data-a="back"><ha-icon icon="mdi:arrow-left"></ha-icon></button><h1>${esc(title)}</h1><button class="save ${err ? 'dis' : ''}" data-a="save">${d.kind === 'timer' && !d.ui.keep ? 'Iniciar' : 'Guardar'}</button></div>
     <div class="body"><div class="wrap">
       ${d.kind === 'reminder' ? '' : `<div class="field"><div class="nameRow">
@@ -1865,7 +1910,7 @@ class MatterAIEscenasCard extends HTMLElement {
       <div class="colors">${COLORS.map((c) => `<button class="dot ${d.color === c ? 'on' : ''}" style="background:${c}" data-a="set" data-o="d" data-k="color" data-v="${c}"></button>`).join('')}</div></div>`}
       ${main}
       ${advanced}
-      ${enabledRow}
+      ${enabledRow}${lockRow}
       ${err ? `<div class="note">⚠ ${esc(err)}</div>` : ''}
       ${canRun ? `<button class="btn sec2" data-a="testrun"><ha-icon icon="mdi:play"></ha-icon> ${d.kind === 'irrigation' ? 'Regar ahora (ignora lluvia y días)' : d.kind === 'night' ? 'Buenas noches ahora' : d.kind === 'wake' ? 'Probar (amanecer de 1 minuto)' : d.kind === 'doorbell' ? 'Probar el aviso' : 'Probar ahora'}</button>` : ''}
       ${d.id ? `<button class="btn danger" data-a="delete">Eliminar</button>` : ''}
@@ -2336,6 +2381,50 @@ class MatterAIEscenasCard extends HTMLElement {
       ${sec(++n, '🔔 Pausar cuando pasa algo', 'Opcional')}
       <div class="field">${this._entBtn('d', 'ui.pause_on', u.pause_on, ['binary_sensor', 'sensor', 'event', 'alarm_control_panel'], 'Timbre / portero, alarma, sensor de puerta…', true)}
         <div class="hint">Pausa lo que se está viendo cuando tocan el timbre, se dispara la alarma, etc.</div></div>`;
+  }
+
+  _editor_gate(d) {
+    const u = d.ui; const h = this._hass;
+    const sec = (n, t, s2) => this._num2(null, n, t, s2);
+    const live = (this._rules || []).find((r) => r.id === d.id);
+    const RELAYS = ['switch', 'button', 'input_button', 'script', 'light', 'input_boolean', 'lock'];
+    const sensorNow = (e) => (e && h.states[e] ? `Ahora marca: <b>${esc(h.states[e].state === 'on' ? 'encendido / abierto' : h.states[e].state === 'off' ? 'apagado / cerrado' : h.states[e].state)}</b>` : '');
+    const isSwitch = (e) => e && ['switch', 'light', 'input_boolean'].includes(dom(e));
+    const travel = +u.travel_s || live?.gate_learned || 0;
+    let n = 0;
+    return `<div class="today"><div class="mode" style="margin:0"><ha-icon icon="mdi:information-outline"></ha-icon><div><b>Cómo funciona</b><br>
+        Crea el portón «${esc(d.name || 'Portón')}» con su estado real: <b>Abierto, Abriendo, Cerrando y Cerrado</b>. Al tocar «Cerrar» mide cuánto tarda hasta que el sensor marca cerrado, y usa ese tiempo para mostrar «Abriendo».<br>
+        🛡 «Cerrar» no manda el pulso mientras abre (lo frenaría); «Abrir» sí, mientras cierra, para revertirlo. Si lo abren con el control remoto también lo muestra.</div></div>
+      ${live ? `<div class="mode" style="margin-top:10px"><ha-icon icon="mdi:history"></ha-icon><div><b>Ahora:</b> ${esc(ruleSummary(h, live, this._rules) || '—')}${live.gate_status ? `<br><b>Último:</b> ${esc(live.gate_status)}` : ''}</div></div>` : ''}</div>
+
+      ${sec(++n, 'Motor')}
+      <div class="field">${this._seg('d', 'ui.relays', u.relays, [['one', 'Un pulso abre y cierra'], ['two', 'Relé de abrir y de cerrar']])}
+        ${u.relays === 'two' ? `<div class="lbl" style="margin-top:12px">Relé de abrir</div>${this._entBtn('d', 'ui.open_relay', u.open_relay, RELAYS, 'Elegir')}
+          <div class="lbl" style="margin-top:12px">Relé de cerrar</div>${this._entBtn('d', 'ui.close_relay', u.close_relay, RELAYS, 'Elegir')}`
+        : `<div class="lbl" style="margin-top:12px">Relé o botón que da el pulso</div>${this._entBtn('d', 'ui.relay', u.relay, RELAYS, 'Elegir (Shelly, Sonoff, botón…)')}`}
+        ${[u.relay, u.open_relay, u.close_relay].some(isSwitch) ? `<div class="lbl" style="margin-top:12px">Después del pulso</div>${this._chips('d', 'ui.pulse_s', u.pulse_s, [[0, 'El relé se apaga solo'], [1, 'Apagarlo a 1 s'], [2, 'Apagarlo a 2 s']])}
+          <div class="hint">Si en el Shelly configuraste el apagado automático, dejá «se apaga solo».</div>` : ''}
+        <div class="lbl" style="margin-top:12px">Tipo</div>${this._seg('d', 'ui.gate_type', u.gate_type, [['gate', 'Portón'], ['garage', 'Puerta de garage']])}</div>
+
+      ${sec(++n, 'Sensores')}
+      <div class="field"><div class="lbl" style="margin-top:0">Sensor de cerrado</div>${this._entBtn('d', 'ui.closed_sensor', u.closed_sensor, ['binary_sensor'], 'Elegir el sensor')}
+        ${u.closed_sensor ? `<div class="lbl" style="margin-top:10px">Con el portón cerrado, el sensor marca</div>${this._seg('d', 'ui.closed_when', u.closed_when, [['off', 'Apagado / Cerrado'], ['on', 'Encendido / Abierto']])}
+          <div class="hint">${sensorNow(u.closed_sensor)}. Cerrá el portón, fijate qué marca y elegí eso.</div>` : ''}
+        <div class="lbl" style="margin-top:14px">Sensor de abierto (opcional)</div>${this._entBtn('d', 'ui.open_sensor', u.open_sensor, ['binary_sensor'], 'Sin sensor de abierto')}
+        ${u.open_sensor ? `<button class="chip" style="margin-top:6px" data-a="set" data-o="d" data-k="ui.open_sensor" data-v="" data-t="null">Quitar</button>
+          <div class="lbl" style="margin-top:10px">Con el portón abierto del todo, marca</div>${this._seg('d', 'ui.open_when', u.open_when, [['on', 'Encendido'], ['off', 'Apagado']])}
+          <div class="hint">${sensorNow(u.open_sensor)}. Con este sensor sabe exacto cuándo terminó de abrir.</div>` : '<div class="hint">Si el portón tiene un fin de carrera de abierto, ponelo: «Abriendo» termina justo cuando llega.</div>'}</div>
+
+      ${sec(++n, 'Tiempo de recorrido')}
+      <div class="field">${this._chips('d', 'ui.travel_s', +u.travel_s || 0, [[0, 'Aprenderlo solo'], [10, '10 s'], [15, '15 s'], [20, '20 s'], [30, '30 s'], [45, '45 s'], [60, '1 min']])}
+        <div class="hint">${+u.travel_s ? `Usa ${u.travel_s} s fijos.` : travel ? `Aprendido: tarda <b>${travel} s</b>. Se ajusta solo con cada cierre.` : 'Todavía no lo aprendió: abrilo y cerralo una vez desde la tarjeta.'}</div></div>
+
+      ${sec(++n, 'Avisos', 'Opcional')}
+      <div class="field"><div class="lbl" style="margin-top:0">Avisar si queda abierto más de</div>${this._chips('d', 'ui.open_alert_min', +u.open_alert_min || 0, [[0, 'No avisar'], [5, '5 min'], [10, '10 min'], [15, '15 min'], [30, '30 min'], [60, '1 h']])}
+        <div class="hint">El aviso trae un botón «Cerrar» y se repite mientras siga abierto.</div>
+        <div style="margin-top:12px">${this._sw('night_close', '🌙 Si quedó abierto de noche, cerrarlo solo', u.night_close)}</div>
+        ${u.night_close ? `<div class="inl" style="margin-top:8px"><span class="unit">a las</span><input type="time" value="${esc(u.night_at)}" data-o="d" data-k="ui.night_at"></div><div class="hint">Avisa cuando lo cierra. Ojo con autos estacionados en el medio: usalo si el portón tiene fotocélula.</div>` : ''}
+        ${+u.open_alert_min || u.night_close ? `<div style="margin-top:12px">${this._recipients('ui.recipients', u.recipients)}</div>` : ''}</div>`;
   }
 
   _editor_guest(d) {
@@ -3287,7 +3376,8 @@ class MatterAIEscenasCard extends HTMLElement {
       case 'tab': this._tab = ds.v; this._render(); return;
       case 'create': this._nav({ page: 'create' }); return;
       case 'openhome': if (this._rules) this._openOv({ page: 'home' }); return;
-      case 'settings': this._nav({ page: 'settings', hidden: [...(this._settings?.hidden || [])], ssearch: '' }); return;
+      case 'settings': this._nav({ page: 'settings', hidden: [...(this._settings?.hidden || [])], clientOff: [...(this._settings?.client_off || [])], ssearch: '' }); return;
+      case 'coff': { const i = o.clientOff.indexOf(ds.v); if (i >= 0) o.clientOff.splice(i, 1); else o.clientOff.push(ds.v); this._renderOv(); return; }
       case 'stoggle': { const i = o.hidden.indexOf(ds.v); if (i >= 0) o.hidden.splice(i, 1); else o.hidden.push(ds.v); this._renderOv(); return; }
       case 'sgrp': {
         const ents = this._settingsCandidates().filter((e) => dom(e) === ds.v);
@@ -3296,10 +3386,11 @@ class MatterAIEscenasCard extends HTMLElement {
         o.hidden = [...set]; this._renderOv(); return;
       }
       case 'ssave':
-        try { await this._ws('set_settings', { settings: { hidden: o.hidden } }); this._toast('Guardado ✓'); this._back(); } catch (err) { this._toast(err.message, true); }
+        try { await this._ws('set_settings', { settings: { hidden: o.hidden, client_off: o.clientOff || [] } }); this._toast('Guardado ✓'); this._back(); } catch (err) { this._toast(err.message, true); }
         return;
       case 'edit': {
         const r = (this._rules || []).find((x) => x.id === ds.id); if (!r) return;
+        if (!this._isAdmin && (r.locked || installerOnly(r))) { this._toast('La armó tu instalador: la podés activar o pausar, pero no cambiarla'); return; }
         const draft = clone(r);
         if (draft.kind === 'timer') draft.ui.start_now = false;
         if (draft.kind === 'circadian') normCirc(draft.ui);
@@ -3462,6 +3553,7 @@ class MatterAIEscenasCard extends HTMLElement {
       }
       case 'dayset': this._setVal(ds.o, ds.k, { all: [...ALL_DAYS], week: ['mon', 'tue', 'wed', 'thu', 'fri'], wkend: ['sat', 'sun'] }[ds.v]); return;
       case 'denabled': o.draft.enabled = o.draft.enabled === false; o.dirty = true; this._renderOv(); return;
+      case 'dlock': o.draft.locked = !o.draft.locked; o.dirty = true; this._renderOv(); return;
       case 'iconsheet': o.sheet = { kind: 'icon' }; this._renderOv(); return;
       case 'seticon': o.draft.icon = ds.v; o.dirty = true; o.sheet = null; this._renderOv(); return;
       case 'timerq': o.draft.ui.h = +ds.h; o.draft.ui.m = +ds.m; this._renderOv(); return;

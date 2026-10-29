@@ -45,7 +45,7 @@ from .voice import async_setup_voice
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SWITCH, Platform.BUTTON, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.SWITCH, Platform.BUTTON, Platform.BINARY_SENSOR, Platform.COVER]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
@@ -96,8 +96,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 raise HomeAssistantError(str(err)) from err
 
     async def svc_set_enabled(call: ServiceCall) -> None:
+        user = await hass.auth.async_get_user(call.context.user_id) if call.context.user_id else None
         for rule_id in await _resolve(call):
-            await _manager(hass).async_set_enabled(rule_id, call.data["enabled"])
+            try:
+                await _manager(hass).async_set_enabled(rule_id, call.data["enabled"], user)
+            except InvalidRule as err:
+                raise HomeAssistantError(str(err)) from err
 
     target = {
         vol.Optional("rule_id"): vol.Any(cv.string, [cv.string]),
@@ -281,7 +285,7 @@ async def ws_save(hass: HomeAssistant, connection, msg: dict) -> None:
 )
 @websocket_api.async_response
 async def ws_delete(hass: HomeAssistant, connection, msg: dict) -> None:
-    await _guard(connection, msg, lambda: _manager(hass).async_delete(msg["rule_id"]))
+    await _guard(connection, msg, lambda: _manager(hass).async_delete(msg["rule_id"], connection.user))
 
 
 @websocket_api.websocket_command(
@@ -308,7 +312,7 @@ async def ws_set_enabled(hass: HomeAssistant, connection, msg: dict) -> None:
     await _guard(
         connection,
         msg,
-        lambda: _manager(hass).async_set_enabled(msg["rule_id"], msg["enabled"]),
+        lambda: _manager(hass).async_set_enabled(msg["rule_id"], msg["enabled"], connection.user),
     )
 
 
@@ -396,7 +400,7 @@ async def ws_z2m_setup(hass: HomeAssistant, connection, msg: dict) -> None:
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/action", vol.Required("rule_id"): str, vol.Required("action"): vol.In(["open", "open2", "test", "ignore", "cine_toggle", "cine_on", "cine_off"])}
+    {vol.Required("type"): f"{DOMAIN}/action", vol.Required("rule_id"): str, vol.Required("action"): vol.In(["open", "open2", "test", "ignore", "close", "cine_toggle", "cine_on", "cine_off"])}
 )
 @websocket_api.async_response
 async def ws_action(hass: HomeAssistant, connection, msg: dict) -> None:

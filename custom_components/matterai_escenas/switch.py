@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_call_later
 
-from .const import KIND_SCENE, KIND_TIMER, KIND_TV
+from .const import KIND_GATE, KIND_SCENE, KIND_TIMER, KIND_TV
 from .entity import RuleEntity, setup_rule_platform
 
 
@@ -87,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         hass,
         entry,
         async_add_entities,
-        lambda rule: rule.get("kind") not in (KIND_SCENE, KIND_TIMER),
+        lambda rule: rule.get("kind") not in (KIND_SCENE, KIND_TIMER, KIND_GATE),
         RuleSwitch,
         "switch",
     )
