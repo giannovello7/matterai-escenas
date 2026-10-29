@@ -4,7 +4,7 @@
  * Se sirve automáticamente desde la integración matterai_escenas.
  */
 (() => {
-const VERSION = '2.9.3';
+const VERSION = '2.9.4';
 const D = 'matterai_escenas';
 
 // ----------------------------------------------------------------- utilidades
@@ -1718,7 +1718,7 @@ class MatterAIEscenasCard extends HTMLElement {
         if (this._talkEl) { this._talkEl.hass = h; box.textContent = ''; box.appendChild(this._talkEl); return; }
       }
       const token = h.states[u.camera]?.attributes?.access_token;
-      box.innerHTML = token ? `<img src="/api/camera_proxy_stream/${esc(u.camera)}?token=${esc(token)}" alt="">` : 'Cámara no disponible';
+      box.innerHTML = token ? `<img src="${window.__maeBase || ''}/api/camera_proxy_stream/${esc(u.camera)}?token=${esc(token)}" alt="">` : 'Cámara no disponible';
     }
     // fotos del historial (URL firmada por media_source)
     root.querySelectorAll('[data-media]').forEach(async (el) => {
