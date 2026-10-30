@@ -1,7 +1,7 @@
 """Constantes de MatterAI Escenas."""
 
 DOMAIN = "matterai_escenas"
-VERSION = "2.10.0"
+VERSION = "2.10.1"
 
 STORAGE_KEY = f"{DOMAIN}.rules"
 STORAGE_VERSION = 1
@@ -74,6 +74,12 @@ CONTROLLER_KINDS = {
 }
 # sólo el instalador (admin) las crea y las cambia: arman «equipos» que usan las demás
 INSTALLER_KINDS = {KIND_GATE}
+# lo que el cliente NO crea por defecto (las arma el instalador; el cliente las usa y ajusta).
+# El instalador lo cambia por casa en ⚙ Ajustes del instalador.
+DEFAULT_CLIENT_OFF = [
+    KIND_LOOP, KIND_ROOM, KIND_CIRCADIAN, KIND_CLIMA, KIND_TV, KIND_WATCH,
+    KIND_DOORBELL, KIND_FDETECT, KIND_FFACE, KIND_IRRIGATION,
+]
 # se pueden ejecutar a mano (botón / tarjeta / voz)
 RUNNABLE_CONTROLLERS = {KIND_NIGHT, KIND_WAKE, KIND_REMINDER, KIND_DOORBELL}
 TRIGGERED_KINDS = {KIND_AUTO, KIND_PERIOD, KIND_IRRIGATION, KIND_CIRCADIAN}

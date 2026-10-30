@@ -65,6 +65,7 @@ from .const import (
     KIND_GUEST,
     KIND_GATE,
     INSTALLER_KINDS,
+    DEFAULT_CLIENT_OFF,
     RUNNABLE_CONTROLLERS,
     KIND_PERIOD,
     KIND_ROOM,
@@ -421,7 +422,7 @@ class RuleManager:
         self._store: Store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.rules: dict[str, dict[str, Any]] = {}
         # ajustes que define el instalador (admin) desde la tarjeta
-        self.settings: dict[str, Any] = {"hidden": [], "client_off": []}
+        self.settings: dict[str, Any] = {"hidden": [], "client_off": list(DEFAULT_CLIENT_OFF)}
         self.runners: dict[str, RuleRunner] = {}
         self.started = False
 

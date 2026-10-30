@@ -172,6 +172,10 @@ async def _async_register_panel(hass: HomeAssistant, entry: ConfigEntry) -> None
     """Entrada propia en la barra lateral, visible también para no administradores."""
     if not entry.options.get(CONF_SIDEBAR, True):
         return
+    if hass.config_entries.async_entries("matterai"):
+        # casa MatterAI: el instalador usa el panel MatterAI (pestaña Automatizaciones)
+        # y el cliente la app, así que no hace falta otra entrada en la barra lateral
+        return
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=PANEL_URL_PATH,

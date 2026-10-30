@@ -4,7 +4,7 @@
  * Se sirve automáticamente desde la integración matterai_escenas.
  */
 (() => {
-const VERSION = '2.10.0';
+const VERSION = '2.10.1';
 const D = 'matterai_escenas';
 
 // ----------------------------------------------------------------- utilidades
@@ -1801,7 +1801,7 @@ class MatterAIEscenasCard extends HTMLElement {
     const tab = this._ctab || 'smart';
     const riego = IDEAS.findIndex((i) => i.make && i.name.startsWith('Riego'));
     // qué tipos puede crear este usuario (el instalador los elige por casa)
-    const off = new Set(this._settings?.client_off || []);
+    const off = new Set(this._settings?.client_off ?? ['loop', 'room', 'circadian', 'clima', 'tv', 'watch', 'doorbell', 'fdetect', 'fface', 'irrigation']);
     const kindOf = (a, attrs) => {
       const v = (attrs.match(/data-v="([^"]*)"/) || [])[1];
       if (a === 'newkind') return v;
