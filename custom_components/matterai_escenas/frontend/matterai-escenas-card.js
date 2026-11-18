@@ -1228,7 +1228,7 @@ ha-card{padding:16px;overflow:hidden}
 .ov.open{animation:fadein .18s ease-out}
 .ov.enter .body{animation:slide .2s ease-out}
 @keyframes slide{from{transform:translateY(14px);opacity:.4}to{transform:none;opacity:1}}
-.bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;background:var(--mae-card);border-bottom:1px solid var(--mae-line)}
+.bar{display:flex;align-items:center;gap:8px;padding:calc(max(env(safe-area-inset-top,0px),var(--ios-top,0px)) + 10px) 12px 10px;background:var(--mae-card);border-bottom:1px solid var(--mae-line)}
 .bar h1{flex:1;text-align:center;font-size:18px;margin:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar .ib{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .bar .save{font-weight:700;padding:8px 12px;color:var(--mae-accent)}
@@ -1327,7 +1327,7 @@ input[type=color]{width:56px;height:40px;border:0;background:none;padding:0}
 .rbtn.stop{background:rgba(247,111,111,.15);color:#e04848}
 /* hoja a pantalla completa (selector de equipos): el buscador queda arriba y el teclado no lo tapa */
 .scrim.top{align-items:stretch}
-.sheet.full{max-height:none;height:100%;border-radius:0;padding-top:env(safe-area-inset-top,0px)}
+.sheet.full{max-height:none;height:100%;border-radius:0;padding-top:max(env(safe-area-inset-top,0px),var(--ios-top,0px))}
 .sh-top{padding:0 16px 6px}
 .tchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
 .tchips .chip{white-space:nowrap;padding:7px 12px;font-size:13px}
@@ -3913,7 +3913,7 @@ class MatterAIEscenasPanel extends HTMLElement {
     if (this._card) return;
     this.shadowRoot.innerHTML = `<style>
       :host{display:block;min-height:100vh;background:var(--primary-background-color)}
-      .tb{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;height:var(--header-height,56px);box-sizing:content-box;padding:env(safe-area-inset-top,0px) 12px 0 4px;background:var(--app-header-background-color,var(--primary-color));color:var(--app-header-text-color,#fff);border-bottom:var(--app-header-border-bottom,none)}
+      .tb{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:8px;height:var(--header-height,56px);box-sizing:content-box;padding:max(env(safe-area-inset-top,0px),var(--ios-top,0px)) 12px 0 4px;background:var(--app-header-background-color,var(--primary-color));color:var(--app-header-text-color,#fff);border-bottom:var(--app-header-border-bottom,none)}
       .t{font-size:20px;font-weight:400;margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     </style><div class="tb"><span class="mb"></span><div class="t"></div></div><div class="ct"></div>`;
     this._mb = document.createElement('ha-menu-button');
