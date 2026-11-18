@@ -1,6 +1,6 @@
 {
   "domain": "matterai_escenas",
-  "name": "MatterAI Escenas",
+  "name": "MatterAI Automatizaciones",
   "after_dependencies": [
     "calendar",
     "camera",
@@ -23,5 +23,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/giannovello7/matterai-escenas/issues",
   "requirements": [],
-  "version": "2.10.1"
+  "version": "2.34.1"
 }

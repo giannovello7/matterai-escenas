@@ -1,4 +1,4 @@
-"""Avisos al celular con botones (app de Home Assistant) o en HA si no hay celulares."""
+"""Avisos al celular con botones (app MatterAI o app de Home Assistant, mismo formato) o en HA si no hay celulares."""
 
 from __future__ import annotations
 
@@ -14,6 +14,33 @@ _LOGGER = logging.getLogger(__name__)
 # Prefijo de los botones: el manager escucha mobile_app_notification_action y
 # reparte la acción a la regla que corresponde.
 ACTION_PREFIX = "MAE"
+
+
+APP_ID = "ar.com.matterai.app"
+
+
+def app_targets(hass: HomeAssistant) -> list[str]:
+    """Los equipos con la app MatterAI registrados en esta casa (notify.mobile_app_<equipo>).
+
+    Si una automatización no tiene celulares elegidos, el aviso va a todos estos: el cliente no ve Home Assistant,
+    así que una notificación dentro de HA no le llegaría nunca.
+    """
+    from homeassistant.util import slugify  # noqa: PLC0415
+
+    out: list[str] = []
+    for entry in hass.config_entries.async_entries("mobile_app"):
+        if entry.data.get("app_id") != APP_ID:
+            continue
+        name = f"mobile_app_{slugify(entry.data.get('device_name') or '')}"
+        if name not in out and hass.services.has_service("notify", name):
+            out.append(name)
+    return out
+
+
+def targets_for(hass: HomeAssistant, chosen: list[str] | None) -> list[str]:
+    """Los elegidos que existen; si no hay ninguno, todos los equipos con la app MatterAI."""
+    valid = [t for t in (chosen or []) if isinstance(t, str) and t and hass.services.has_service("notify", t)]
+    return valid or app_targets(hass)
 
 
 def action_id(rule_id: str, action: str) -> str:
@@ -37,7 +64,7 @@ class Notifier:
         self.targets = [t for t in (targets or []) if isinstance(t, str) and t]
 
     def _valid_targets(self) -> list[str]:
-        return [t for t in self.targets if self.hass.services.has_service("notify", t)]
+        return targets_for(self.hass, self.targets)
 
     async def send(
         self,

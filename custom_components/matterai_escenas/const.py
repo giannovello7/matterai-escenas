@@ -1,7 +1,13 @@
-"""Constantes de MatterAI Escenas."""
+"""Constantes de las automatizaciones (antes MatterAI Escenas, ahora parte de MatterAI)."""
 
+# espacio de nombres interno: dónde se guardan las reglas, comandos websocket y la tarjeta.
+# Se mantiene igual para no perder automatizaciones ni romper la app.
 DOMAIN = "matterai_escenas"
-VERSION = "2.10.1"
+# la integración que las contiene (servicios y entidades)
+INTEGRATION = DOMAIN
+_MATTERAI_VERSION = "2.34.1"
+
+VERSION = _MATTERAI_VERSION  # una sola versión: la de MatterAI
 
 STORAGE_KEY = f"{DOMAIN}.rules"
 STORAGE_VERSION = 1
@@ -116,7 +122,7 @@ ALLOWED_SERVICE_DOMAINS = {
     "persistent_notification",
     "tts",
     "weather",  # weather.get_forecasts (sólo lectura) para el riego
-    DOMAIN,
+    INTEGRATION,  # matterai.run / matterai.set_enabled (ejecutar o pausar otra regla)
 }
 # Del dominio homeassistant sólo se permiten estos servicios
 ALLOWED_HA_SERVICES = {"turn_on", "turn_off", "toggle"}

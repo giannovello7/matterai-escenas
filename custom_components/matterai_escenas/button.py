@@ -11,11 +11,14 @@ from .entity import RuleEntity, setup_rule_platform
 
 
 class RuleButton(RuleEntity, ButtonEntity):
+    role = "scene"
     async def async_press(self) -> None:
         await self.manager.async_run(self.rule_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    if not hass.data.get("matterai_escenas"):
+        return  # sin motor de automatizaciones (por ejemplo, MatterAI Escenas sigue instalada)
     setup_rule_platform(
         hass,
         entry,

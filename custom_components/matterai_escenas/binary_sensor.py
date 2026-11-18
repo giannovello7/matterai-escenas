@@ -40,6 +40,8 @@ class RoomOccupancy(RuleEntity, BinarySensorEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    if not hass.data.get("matterai_escenas"):
+        return  # sin motor de automatizaciones (por ejemplo, MatterAI Escenas sigue instalada)
     setup_rule_platform(
         hass,
         entry,

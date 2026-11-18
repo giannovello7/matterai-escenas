@@ -18,6 +18,7 @@ from .manager import RuleManager
 class RuleEntity(Entity):
     _attr_should_poll = False
     suffix = ""  # para tener más de una entidad por regla en la misma plataforma
+    role = "rule"  # scene (botón de un toque), routine (activar/pausar), voice, cine: lo usa la app MatterAI
 
     def __init__(self, manager: RuleManager, rule_id: str) -> None:
         self.manager = manager
@@ -45,6 +46,7 @@ class RuleEntity(Entity):
             "last_run": rule.get("last_run"),
             "runs": rule.get("runs", 0),
             "created_by": rule.get("created_by"),
+            "matterai_role": self.role,
         }
 
 

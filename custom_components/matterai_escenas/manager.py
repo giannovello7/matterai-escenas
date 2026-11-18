@@ -117,8 +117,58 @@ def installer_only(rule: dict[str, Any]) -> bool:
     return rule.get("kind") in INSTALLER_KINDS or (rule.get("kind") == KIND_ROOM and bool((rule.get("ui") or {}).get("only_sensor")))
 
 
+def _rule_opts(rule: dict[str, Any] | None) -> set[str]:
+    """Las opciones que usa una regla armada a mano: «t:time», «c:sun», «a:notify»…"""
+    ui = (rule or {}).get("ui") or {}
+    out: set[str] = set()
+    for key, pre in (("triggers", "t"), ("conditions", "c"), ("actions", "a")):
+        for item in ui.get(key) or []:
+            if isinstance(item, dict) and item.get("type"):
+                out.add(f"{pre}:{item['type']}")
+    return out
+
+
 def _is_admin(user) -> bool:
     return user is None or bool(getattr(user, "is_admin", False))
+
+
+# lo propio de cada casa: no viaja en las plantillas
+TEMPLATE_DROP = ("history", "invites", "learned_s", "runs", "last_run", "created", "created_by", "updated", "fire_at")
+# Lo que nunca sale de la casa en las copias que van al panel central: los links de invitado (abren portones)
+# y los historiales (quién usó cada link, desde qué IP, quién tocó el timbre).
+PRIVATE_DROP = ("invites", "history")
+_ENTITY_RE = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
+_ENTITY_DOMAINS = {
+    "light", "switch", "binary_sensor", "sensor", "cover", "climate", "fan", "lock", "media_player", "camera", "alarm_control_panel",
+    "input_boolean", "input_button", "input_number", "input_select", "button", "scene", "script", "valve", "vacuum", "siren",
+    "humidifier", "water_heater", "remote", "event", "calendar", "weather", "person", "device_tracker", "number", "select", "update",
+}
+
+
+def _replace_entities(node: Any, mapping: dict[str, str]) -> Any:
+    """Reemplaza ids de entidades en toda la regla, también como clave «dominio__objeto» (la usa la tarjeta)."""
+    keyed = {k.replace(".", "__"): v.replace(".", "__") for k, v in mapping.items()}
+    if isinstance(node, dict):
+        return {keyed.get(k, mapping.get(k, k)) if isinstance(k, str) else k: _replace_entities(v, mapping) for k, v in node.items()}
+    if isinstance(node, list):
+        return [_replace_entities(v, mapping) for v in node]
+    if isinstance(node, str):
+        return mapping.get(node, node)
+    return node
+
+
+def _entity_refs(node: Any) -> set[str]:
+    """Entidades que nombra una regla (para avisar cuáles no existen en otra casa)."""
+    out: set[str] = set()
+    if isinstance(node, dict):
+        for value in node.values():
+            out |= _entity_refs(value)
+    elif isinstance(node, list):
+        for value in node:
+            out |= _entity_refs(value)
+    elif isinstance(node, str) and _ENTITY_RE.match(node) and node.split(".")[0] in _ENTITY_DOMAINS:
+        out.add(node)
+    return out
 
 
 def build_sequence(rule: dict[str, Any]) -> list[dict[str, Any]]:
@@ -499,8 +549,117 @@ class RuleManager:
         if isinstance(off, list):
             # tipos que este cliente no puede crear (los decide el instalador)
             self.settings["client_off"] = sorted({str(k) for k in off if k in KINDS})
+        opt = settings.get("opt_off")
+        if isinstance(opt, list):
+            # opciones de «Si… / Sólo si… / Entonces…» y las ideas de ejemplo que el cliente no ve (2.34)
+            self.settings["opt_off"] = sorted({str(k)[:40] for k in opt if isinstance(k, str)})[:80]
+        tabs = settings.get("tabs_off")
+        if isinstance(tabs, list):
+            # pestañas de la tarjeta que el cliente no ve (2.34)
+            self.settings["tabs_off"] = sorted({k for k in tabs if k in ("scene", "auto", "smart", "rem", "timer")})
+        mode = settings.get("ents_mode")
+        if mode in ("app", "pick", "hide"):
+            # qué equipos usa al armar: los de la app MatterAI, sólo los marcados, o todos menos los ocultos
+            self.settings["ents_mode"] = mode
+        shown = settings.get("shown")
+        if isinstance(shown, list):
+            self.settings["shown"] = sorted({str(e) for e in shown if isinstance(e, str)})[:3000]
         self._save()
         self._changed()
+
+    # ---------- copias y plantillas ----------
+
+    def export_rules(self, rule_ids: list[str] | None = None, template: bool = False, private: bool = True) -> list[dict[str, Any]]:
+        """Reglas tal como se guardan. Como plantilla, sin lo propio de esta casa (historial, invitaciones, usos).
+        Con private=False (copia para el panel central), sin los links de invitado ni los historiales."""
+        out = []
+        for rule in self.rules.values():
+            if rule_ids is not None and rule["id"] not in rule_ids:
+                continue
+            item = copy.deepcopy(rule)
+            if template:
+                for key in TEMPLATE_DROP:
+                    item.pop(key, None)
+            elif not private:
+                for key in PRIVATE_DROP:
+                    item.pop(key, None)
+            out.append(item)
+        return out
+
+    async def async_restore(self, rules: list[dict[str, Any]], settings: dict[str, Any] | None) -> int:
+        """Reemplaza todas las reglas por las de una copia (las arranca de nuevo)."""
+        clean = [copy.deepcopy(r) for r in rules if isinstance(r, dict) and r.get("id") and r.get("kind") in KINDS]
+        # las copias del panel central no traen invitados ni historiales: se conservan los de la casa
+        for r in clean:
+            old = self.rules.get(r["id"])
+            for key in PRIVATE_DROP:
+                if key not in r and old and key in old:
+                    r[key] = copy.deepcopy(old[key])
+        await self.async_stop_all()
+        self.rules = {r["id"]: r for r in clean}
+        if isinstance(settings, dict):
+            self.settings.update({k: v for k, v in settings.items() if k in ("hidden", "client_off", "opt_off", "tabs_off", "ents_mode", "shown")})
+        self._save()
+        await self.async_start_all()
+        return len(clean)
+
+    async def async_import(self, rules: list[dict[str, Any]]) -> dict[str, Any]:
+        """Suma reglas de una plantilla: ids nuevos y pausadas hasta revisar los equipos de esta casa."""
+        created, failed = [], []
+        known = set(self.hass.states.async_entity_ids())
+        missing: set[str] = set()
+        for raw in rules:
+            if not isinstance(raw, dict):
+                continue
+            item = copy.deepcopy(raw)
+            for key in TEMPLATE_DROP:
+                item.pop(key, None)
+            item["id"] = uuid.uuid4().hex[:12]
+            item["enabled"] = False
+            for eid in _entity_refs(item.get("ui")):
+                if eid not in known:
+                    missing.add(eid)
+            try:
+                saved = await self.async_save(item, None)
+                created.append({"id": saved["id"], "name": saved["name"]})
+            except (InvalidRule, HomeAssistantError, vol.Invalid) as err:
+                failed.append({"name": str(item.get("name") or "?"), "error": str(err)})
+        return {"created": created, "failed": failed, "missing": sorted(missing)}
+
+    async def async_remap(self, rule_ids: list[str], mapping: dict[str, str]) -> dict[str, Any]:
+        """Cambia equipos en reglas importadas (plantilla de otra casa → equipos de esta casa)."""
+        mapping = {str(k): str(v) for k, v in (mapping or {}).items() if k and v and k != v}
+        if not mapping:
+            return {"changed": 0, "missing": []}
+        changed = 0
+        for rid in rule_ids:
+            rule = self.rules.get(rid)
+            if rule is None:
+                continue
+            raw = _replace_entities(copy.deepcopy(rule), mapping)
+            if raw != rule:
+                await self.async_save(raw, None)
+                changed += 1
+        known = set(self.hass.states.async_entity_ids())
+        missing = sorted({e for rid in rule_ids if rid in self.rules for e in _entity_refs(self.rules[rid].get("ui")) if e not in known})
+        return {"changed": changed, "missing": missing}
+
+    async def async_restore_some(self, rules: list[dict[str, Any]]) -> int:
+        """Restaura sólo algunas reglas de una copia: reemplaza las que tengan el mismo id y suma las que no estén."""
+        n = 0
+        for raw in rules:
+            if not isinstance(raw, dict) or not raw.get("id") or raw.get("kind") not in KINDS:
+                continue
+            item, old = copy.deepcopy(raw), self.rules.get(raw["id"])
+            for key in PRIVATE_DROP:
+                if key not in item and old and key in old:
+                    item[key] = copy.deepcopy(old[key])
+            self.rules[raw["id"]] = item
+            await self._async_restart(raw["id"])
+            n += 1
+        self._save()
+        self._changed()
+        return n
 
     async def async_stop_all(self) -> None:
         if getattr(self, "frigate", None):
@@ -702,6 +861,12 @@ class RuleManager:
                 raise InvalidRule("Esto lo configura tu instalador")
             if not prev and raw.get("kind") in self.settings.get("client_off", []):
                 raise InvalidRule("Tu instalador no habilitó este tipo de automatización")
+            # las opciones que el instalador apagó: no se pueden sumar (lo que ya tenía la regla sigue)
+            off = set(self.settings.get("opt_off", []))
+            if off:
+                new = _rule_opts(raw) - (_rule_opts(prev) if prev else set())
+                if new & off:
+                    raise InvalidRule("Tu instalador no habilitó esa opción para las automatizaciones")
         rule = await self.async_validate(raw, is_admin)
         old = self.rules.get(rule["id"])
         rule["locked"] = bool(raw.get("locked")) if is_admin else False

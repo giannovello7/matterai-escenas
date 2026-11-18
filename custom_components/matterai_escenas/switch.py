@@ -14,6 +14,7 @@ from .entity import RuleEntity, setup_rule_platform
 
 
 class RuleSwitch(RuleEntity, SwitchEntity):
+    role = "routine"
     @property
     def is_on(self) -> bool:
         return bool(self.rule.get("enabled", True))
@@ -29,6 +30,7 @@ class SceneVoiceSwitch(RuleEntity, SwitchEntity):
     """Pulsador para Alexa / Google (Matter): al prenderlo ejecuta la escena y vuelve a apagarse."""
 
     suffix = "_voz"
+    role = "voice"
     _pulse = False
 
     @property
@@ -56,6 +58,7 @@ class CineSwitch(RuleEntity, SwitchEntity):
     """«Modo cine» de la Tele inteligente: prendido = modo cine activo."""
 
     suffix = "_cine"
+    role = "cine"
     _attr_icon = "mdi:movie-open"
 
     def _ctl(self):
@@ -83,6 +86,8 @@ class CineSwitch(RuleEntity, SwitchEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    if not hass.data.get("matterai_escenas"):
+        return  # sin motor de automatizaciones (por ejemplo, MatterAI Escenas sigue instalada)
     setup_rule_platform(
         hass,
         entry,

@@ -1,6 +1,6 @@
 <p align="center"><a href="https://matterai.com.ar"><img src="logo.png" alt="MatterAI" height="80"></a></p>
 
-# MatterAI Escenas
+# MatterAI Automatizaciones
 
 [![HACS](https://img.shields.io/badge/HACS-repositorio%20personalizado-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![Validar](https://github.com/giannovello7/matterai-escenas/actions/workflows/validate.yaml/badge.svg)](https://github.com/giannovello7/matterai-escenas/actions/workflows/validate.yaml)
@@ -18,7 +18,7 @@ Los usuarios no admin no pueden entrar al editor de automatizaciones de HA. Esta
 
 1. En Home Assistant: **HACS → ⋮ (arriba a la derecha) → Repositorios personalizados**.
 2. Pegá `https://github.com/giannovello7/matterai-escenas`, elegí la categoría **Integración** y tocá **Agregar**.
-3. Buscá **MatterAI Escenas** en HACS → **Descargar**.
+3. Buscá **MatterAI Automatizaciones** en HACS → **Descargar**.
 4. Reiniciá Home Assistant.
 
 [![Abrir en HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=giannovello7&repository=matterai-escenas&category=integration)
@@ -32,7 +32,7 @@ Para actualizar: cuando haya una versión nueva aparece en **Ajustes → Actuali
 
 ### Después de instalar
 
-1. **Ajustes → Dispositivos y servicios → Agregar integración → MatterAI Escenas.**
+1. **Ajustes → Dispositivos y servicios → Agregar integración → MatterAI Automatizaciones.**
 2. Listo: aparece **«Automatizaciones»** en la barra lateral para todos los usuarios, como el menú de escenas de Tuya o eWeLink. El nombre, el ícono o la opción de ocultarla se cambian en la integración → Configurar.
 3. Opcional: también se puede agregar la tarjeta a un panel:
 
@@ -45,7 +45,20 @@ default_tab: scene           # scene | auto | timer (opcional)
 allow_create: true           # false = sólo ejecutar/activar (opcional)
 ```
 
-**Equipos visibles:** un administrador ve un engranaje ⚙ en la tarjeta o en el menú. Ahí elige qué equipos aparecen para armar automatizaciones, por tipo y con búsqueda. Lo que se desmarca no aparece en las listas del cliente.
+**Ajustes del instalador (⚙):** un administrador ve un engranaje en la tarjeta o en el menú «Automatizaciones». Ahí elige qué puede usar el cliente:
+
+- **Qué automatizaciones puede crear**, una por una (escenas, horarios, temporizadores, luz por presencia, clima inteligente, portero…). Al lado de cada una avisa si la casa no tiene lo que necesita (por ejemplo, sin sensores no sirve la luz por presencia).
+- **Qué opciones le aparecen al armar la suya**: en «Si…» (horario, amanecer, cuando un dispositivo cambia, cuando alguien llega…), en «Sólo si…» y en «Entonces…», más las ideas de ejemplo y las sugerencias con sus equipos.
+- **Perfiles de un toque**: «Según esta casa», «Básico: escenas y horarios», «Todo» y «Sólo usar lo armado».
+- **Qué pestañas ve** (Escenas, Automatizaciones, Recordatorios, Temporizadores).
+- **Qué equipos puede usar**: «Sólo los que marco» (lo más práctico en casas con cientos de entidades) o «Todos menos los que saco», por ambiente o por tipo, con cada grupo plegado.
+- **«Ver cómo lo ve el cliente»** muestra la pantalla Crear tal cual la ve él.
+
+Lo controla también Home Assistant: aunque el cliente lo intente, no puede guardar algo que no habilitaste. Lo que ya armaste vos le sigue funcionando.
+
+Para el cliente la tarjeta es como una app comercial: dos pestañas (**Escenas** y **Automatizaciones**), «Última vez: hoy 19:42» en cada una, **sugerencias armadas con sus equipos** («Al llegar, prender el aire», «Luces al atardecer», «Cerrar el portón a la noche») y un **resumen en una frase** antes de guardar.
+
+> **Casas con MatterAI:** la integración MatterAI ya trae estas automatizaciones adentro. No instales esta además (si están las dos, ésta no arranca).
 
 La tarjeta se sirve sola desde la integración, así que no hace falta agregar un recurso de Lovelace. Después de actualizar, si no ves los cambios, forzá la recarga en el navegador o la app.
 

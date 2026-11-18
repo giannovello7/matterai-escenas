@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "MatterAI Escenas",
-        "description": "Activa el motor de escenas y automatizaciones fáciles. Aparece «Automatizaciones» en la barra lateral para todos los usuarios, y también podés agregar la tarjeta «MatterAI Escenas» a un panel."
+        "title": "MatterAI Automatizaciones",
+        "description": "Activa el motor de escenas y automatizaciones fáciles. Aparece «Automatizaciones» en la barra lateral para todos los usuarios, y también podés poner la tarjeta (custom:matterai-escenas-card) en un dashboard."
       }
     },
     "abort": {
@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "MatterAI Escenas",
+        "title": "MatterAI Automatizaciones",
         "data": {
           "sidebar": "Mostrar en la barra lateral",
           "sidebar_title": "Nombre en la barra lateral",

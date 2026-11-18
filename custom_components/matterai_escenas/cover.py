@@ -67,4 +67,6 @@ class SmartGate(RuleEntity, CoverEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    if not hass.data.get("matterai_escenas"):
+        return
     setup_rule_platform(hass, entry, async_add_entities, lambda rule: rule.get("kind") == KIND_GATE, SmartGate, "cover")

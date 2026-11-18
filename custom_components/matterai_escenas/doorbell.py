@@ -19,7 +19,9 @@ from homeassistant.helpers.event import async_call_later, async_track_state_chan
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .notify import action_id
+def fire_command(*_args, **_kwargs) -> None:
+    """Sola: sin la app MatterAI no hay llamada al celular (los avisos van igual)."""
+from .notify import action_id, targets_for
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -161,6 +163,7 @@ class DoorbellController:
         self._persist()
 
         self._notify()
+        self._app_screen()
         if self.u.get("ring_repeat", True):
             self._timer("repeat", 8, self._repeat)
         self._timer("ring_end", _f(self.u.get("ring_secs"), 40), self._stop_ringing)
@@ -198,7 +201,7 @@ class DoorbellController:
             self.manager.set_rule_extra(self.rule_id, "history", self.history)
 
     def _notify(self) -> None:
-        targets = [t for t in (self.u.get("recipients") or []) if self.hass.services.has_service("notify", t)]
+        targets = targets_for(self.hass, self.u.get("recipients"))
         title = f"🔔 {self.rule.get('name') or 'Portero'}"
         message = "Están tocando el timbre."
         face_sensor = self.u.get("face_sensor")
@@ -225,11 +228,22 @@ class DoorbellController:
         if self.u.get("ring_style", "call") == "call" and not self._quiet():
             # suena como llamada: Android canal de alarma, iOS sonido crítico
             data.update({"channel": "portero", "importance": "high", "vibrationPattern": "100, 1000, 100, 1000, 100"})
+            data["call"] = "true"  # app MatterAI: pantalla de llamada entrante aunque el celular esté bloqueado
             data["push"] = {"interruption-level": "critical", "sound": {"name": "default", "critical": 1, "volume": 1.0}}
         else:
             data["push"] = {"interruption-level": "time-sensitive"}
         for target in targets:
             self._call(f"notify.{target}", {"title": title, "message": message, "data": data})
+
+    def _app_screen(self) -> None:
+        """Las tablets y celulares con la app abierta muestran el portero en pantalla completa (cámara + abrir)."""
+        fire_command(
+            self.hass, "doorbell", rule_id=self.rule_id, title=self.rule.get("name") or "Portero", camera=self.camera,
+            unlock=(self.u.get("unlock_name") or "Abrir puerta") if self.u.get("unlock") else None,
+            unlock2=(self.u.get("unlock2_name") or "Abrir portón") if self.u.get("unlock2") else None,
+            open_action=action_id(self.rule_id, "open"), open2_action=action_id(self.rule_id, "open2"),
+            dismiss_action=action_id(self.rule_id, "dismiss"), quiet=self._quiet(),
+        )
 
     def _repeat(self) -> None:
         if not self.ringing or self._repeats >= 2:
@@ -243,6 +257,7 @@ class DoorbellController:
             return
         self.ringing = False
         self._cancel("repeat")
+        fire_command(self.hass, "doorbell_end", rule_id=self.rule_id)
         self._on_change()
 
     # ------------------------------------------------------------ acciones
@@ -276,9 +291,8 @@ class DoorbellController:
             return
         self._stop_ringing()
         # borrar el aviso de todos los celulares
-        for target in self.u.get("recipients") or []:
-            if self.hass.services.has_service("notify", target):
-                self._call(f"notify.{target}", {"message": "clear_notification", "data": {"tag": f"{DOMAIN}_{self.rule_id}_ring"}})
+        for target in targets_for(self.hass, self.u.get("recipients")):
+            self._call(f"notify.{target}", {"message": "clear_notification", "data": {"tag": f"{DOMAIN}_{self.rule_id}_ring"}})
         self._on_change()
 
     def as_dict(self) -> dict[str, Any]:
