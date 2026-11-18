@@ -1211,8 +1211,14 @@ ha-card{padding:16px;overflow:hidden}
 .sw.on::after{left:21px}
 .empty{text-align:center;padding:24px 8px;color:var(--mae-sub)}
 .row .t2.lr{-webkit-line-clamp:1;opacity:.85}
-.sugt{font-size:13px;font-weight:600;color:var(--mae-sub);margin:16px 4px 8px}
-.row.sug{border:1px dashed var(--mae-line);background:transparent}.row.sug .tx{display:flex;flex-direction:column}.sugadd{font-size:13px;font-weight:700;color:var(--mae-accent);white-space:nowrap}
+.sugbar{display:flex;align-items:center;gap:8px;width:100%;margin-top:14px;padding:10px 14px;border-radius:var(--mae-r);border:1px dashed var(--mae-line);color:var(--mae-sub);font-size:13.5px;text-align:left}
+.sugbar ha-icon{--mdc-icon-size:20px;color:#F7B84F}.sugbar span{flex:1}.sugbar b{color:var(--mae-accent);font-weight:700}
+.sugbox{margin-top:18px;padding:12px;border-radius:var(--mae-r);background:color-mix(in srgb,#F7B84F 9%,transparent);border:1px dashed color-mix(in srgb,#F7B84F 55%,transparent)}
+.sugh{display:flex;align-items:center;gap:10px;margin:0 2px 10px}.sugh>ha-icon{--mdc-icon-size:24px;color:#E0A030;flex:none}.sugh>div{flex:1;min-width:0}
+.sugh b{display:block;font-size:14.5px}.sugh small{display:block;font-size:12px;color:var(--mae-sub);margin-top:1px}.sugx{font-size:12.5px;color:var(--mae-sub);padding:6px 8px;border-radius:8px}
+.sugi{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:12px;background:var(--mae-card);text-align:left;opacity:.92}.sugi+.sugi{margin-top:6px}
+.sugi>ha-icon{--mdc-icon-size:22px;color:var(--mae-sub);flex:none}.sugi .tx{flex:1;min-width:0;display:flex;flex-direction:column}.sugi .t1{font-size:14px;font-weight:600}.sugi .t2{font-size:12px;color:var(--mae-sub);margin-top:2px}
+.sugadd{font-size:12.5px;font-weight:700;color:var(--mae-accent);white-space:nowrap;padding:6px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--mae-accent) 40%,transparent)}
 .sumbox{margin:16px 0 4px;padding:12px 14px;border-radius:var(--mae-r);background:var(--mae-soft);font-size:14px;line-height:1.45}.sumbox .sumh{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mae-accent);margin-bottom:4px}
 .empty ha-icon{--mdc-icon-size:44px;opacity:.5;margin-bottom:8px}
 .err{padding:14px;border-radius:12px;background:rgba(247,111,111,.12);color:#d64545;font-size:14px}
@@ -1871,9 +1877,13 @@ class MatterAIEscenasCard extends HTMLElement {
     const names = new Set((list || []).map((r) => (r.name || '').toLowerCase()));
     this._sugs = houseSuggestions(h, (e) => this._entOk(e)).filter((x) => !names.has(x.name.toLowerCase()) && !oo.has(`t:${x.trig}`)).slice(0, 3);
     if (!this._sugs.length) return '';
-    return `<div class="sugt">Sugerencias para tu casa</div><div class="rows">${this._sugs.map((x, i) => `
-      <button class="row sug" data-a="sug" data-v="${i}"><span class="ic" style="background:${x.color}"><ha-icon icon="${x.icon}"></ha-icon></span>
-        <span class="tx"><span class="t1">${esc(x.name)}</span><span class="t2">${esc(x.hint)}</span></span><span class="sugadd">+ Usar</span></button>`).join('')}</div>`;
+    // bien separadas de las propias: un recuadro aparte, «todavía no están armadas», y plegado si ya tiene las suyas
+    const open = this._sugOpen != null ? this._sugOpen : !(list || []).length;
+    const n = this._sugs.length;
+    if (!open) return `<button class="sugbar" data-a="sugopen"><ha-icon icon="mdi:lightbulb-on-outline"></ha-icon><span>${n} idea${n === 1 ? '' : 's'} para tu casa</span><b>Ver</b></button>`;
+    return `<div class="sugbox"><div class="sugh"><ha-icon icon="mdi:lightbulb-on-outline"></ha-icon><div><b>Ideas para tu casa</b><small>Todavía no están armadas: tocá una para crearla</small></div>
+      ${(list || []).length ? '<button class="sugx" data-a="sugclose">Ocultar</button>' : ''}</div>
+      ${this._sugs.map((x, i) => `<button class="sugi" data-a="sug" data-v="${i}"><ha-icon icon="${x.icon}"></ha-icon><span class="tx"><span class="t1">${esc(x.name)}</span><span class="t2">${esc(x.hint)}</span></span><span class="sugadd">Crear</span></button>`).join('')}</div>`;
   }
   /** El resumen en una frase, antes de guardar: «Cuando… sólo si… → hace esto». */
   _sumHtml(d) {
@@ -3517,6 +3527,8 @@ class MatterAIEscenasCard extends HTMLElement {
       case 'create': this._nav({ page: 'create' }); return;
       case 'openhome': if (this._rules) this._openOv({ page: 'home' }); return;
       case 'settings': { const s0 = this._settings || {}; this._nav({ page: 'settings', hidden: [...(s0.hidden || [])], clientOff: [...(s0.client_off || [])], optOff: [...(s0.opt_off || [])], tabsOff: [...(s0.tabs_off || [])], entsMode: s0.ents_mode || (Array.isArray(this._appEnts) ? 'app' : 'hide'), shown: [...(s0.shown || [])], sgroup: 'area', sopen: [], ssearch: '' }); return; }
+      case 'sugopen': this._sugOpen = true; this._render(); return;
+      case 'sugclose': this._sugOpen = false; this._render(); return;
       case 'sug': { const x = (this._sugs || [])[+ds.v]; if (!x) return; const draft = x.make(); this._nav({ page: 'editor', draft }); return; }
       case 'toff': { o.tabsOff = o.tabsOff || []; const i = o.tabsOff.indexOf(ds.v); if (i >= 0) o.tabsOff.splice(i, 1); else o.tabsOff.push(ds.v); this._renderOv(); return; }
       case 'smode': o.entsMode = ds.v; this._renderOv(); return;
