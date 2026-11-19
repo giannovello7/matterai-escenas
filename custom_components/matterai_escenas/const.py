@@ -5,7 +5,7 @@
 DOMAIN = "matterai_escenas"
 # la integración que las contiene (servicios y entidades)
 INTEGRATION = DOMAIN
-_MATTERAI_VERSION = "2.35.2"
+_MATTERAI_VERSION = "2.35.3"
 
 VERSION = _MATTERAI_VERSION  # una sola versión: la de MatterAI
 
